@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+  catalogservice_api:
+    build:
+      context: ./catalogservice
+    ports:
+      - "5050:5000"
+    volumes:
+      - ./data:/data
+    networks:
+      - backend
+
+  purchase_api:
+    build:
+      context: ./purchase
+    ports:
+      - "5060:5000"
+    volumes:
+      - ./data:/data
+    depends_on:
+      - catalogservice_api
+    networks:
+      - backend
+
+  front_api:
+    build:
+      context: ./front
+    ports:
+      - "8080:5000"
+    depends_on:
+      - purchase_api
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
