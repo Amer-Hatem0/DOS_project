@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 
 def get_db_connection():
-    conn = sqlite3.connect('catalog_service.db')
+    conn = sqlite3.connect('/data/catalog_service.db')
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -37,6 +37,7 @@ def query_catalog_items():
     else:
         return jsonify({"message": "Invalid query parameters"}), 400
 
+
 @app.route('/update', methods=['PATCH'])
 def update_catalog_item():
     data = request.json
@@ -45,28 +46,42 @@ def update_catalog_item():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    if data.keys().__contains__("item_number") and (data.keys().__contains__("s") or data.keys().__contains__("cost")):
+    if 'itemNumber' in data and ('count' in data or 'cost' in data):
 
-        if data.keys().__contains__("s"):
-            count = data["s"]
-            item_number = data["item_number"]
+        item_number = data['itemNumber']
 
-            cursor.execute("UPDATE catalog_item SET Count = Count + ? WHERE ItemNumber = ?", (count, item_number))
+        cursor.execute("SELECT Count, Cost FROM catalog_item WHERE ItemNumber = ?", (item_number,))
+        row = cursor.fetchone()
+
+        if row is None:
+            return jsonify({"error": f"Item {item_number} not found"}), 404
+
+        current_count, current_cost = row
+
+        if 'count' in data:
+            new_count = data['count']
+            print(f"Executing: UPDATE catalog_item SET Count = {new_count} WHERE ItemNumber = {item_number}")  # For debugging
+            cursor.execute("UPDATE catalog_item SET Count = ? WHERE ItemNumber = ?", (new_count, item_number))
             conn.commit()
-            if cursor.rowcount == 0:
-                return jsonify({"error": f"Something went wrong, make sure that item {item_number} exists"}), 404
+
+        if 'cost' in data:
+            new_cost = data['cost']
+            print(f"Executing: UPDATE catalog_item SET Cost = {new_cost} WHERE ItemNumber = {item_number}")  # For debugging
+            cursor.execute("UPDATE catalog_item SET Cost = ? WHERE ItemNumber = ?", (new_cost, item_number))
             conn.commit()
-        if data.keys().__contains__("cost"):
-            cost = data["cost"]
-            item_number = data["item_number"]
-            cursor.execute("UPDATE catalog_item SET Cost = ? WHERE ItemNumber = ?", (cost, item_number))
-            conn.commit()
-            if cursor.rowcount == 0:
-                return jsonify({"error": f"Something went wrong, make sure that item {item_number} exists"}), 404
-            conn.commit()
-        return jsonify({"message": f"Updated record {item_number} successfully"}), 200
+
+        cursor.execute("SELECT * FROM catalog_item WHERE ItemNumber = ?", (item_number,))
+        row = cursor.fetchone()
+
+        if row:
+            return jsonify({"message": f"Updated record {item_number} successfully",
+                             "new_count": row["Count"], "new_cost": row["Cost"]}), 200
+        else:
+            return jsonify({"error": "Item not found after update"}), 404
     else:
         return jsonify({"message": "Invalid request data or missing item number"}), 400
+
+
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
