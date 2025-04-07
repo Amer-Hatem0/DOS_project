@@ -2,7 +2,7 @@ import requests
 from flask import Flask
 
 app = Flask(__name__)
-
+ 
 
 @app.route('/search/<topic>', methods=['GET'])
 def search_by_topic(topic):
