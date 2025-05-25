@@ -1,5 +1,5 @@
-
 import sqlite3
+import requests
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -37,6 +37,41 @@ def query_catalog_items():
         }), 200
 
     return jsonify({"message": "Invalid query parameters"}), 400
+
+@app.route('/update', methods=['PATCH'])
+def update_catalog_item():
+    data = request.json
+    if not data or 'itemNumber' not in data:
+        return jsonify({"error": "Missing itemNumber"}), 400
+
+    item_number = data['itemNumber']
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    row = cursor.execute("SELECT * FROM catalog_item WHERE ItemNumber = ?", (item_number,)).fetchone()
+    if not row:
+        return jsonify({"error": f"Item {item_number} not found"}), 404
+
+    if 'count' in data:
+        cursor.execute("UPDATE catalog_item SET Count = Count + ? WHERE ItemNumber = ?", (data['count'], item_number))
+    if 'cost' in data:
+        cursor.execute("UPDATE catalog_item SET Cost = ? WHERE ItemNumber = ?", (data['cost'], item_number))
+
+    conn.commit()
+
+    # 🔁 Cache invalidation
+    for endpoint in ["http://front_api:5000", "http://localhost:8080"]:
+        try:
+            requests.post(f"{endpoint}/invalidate/{item_number}")
+        except Exception as e:
+            print(f"[Warning] Failed to notify frontend: {e}")
+
+    updated_row = cursor.execute("SELECT * FROM catalog_item WHERE ItemNumber = ?", (item_number,)).fetchone()
+    return jsonify({
+        "message": f"Updated record {item_number} successfully",
+        "new_count": updated_row["Count"],
+        "new_cost": updated_row["Cost"]
+    }), 200
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
