@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy your application files into the container
-COPY .. /app
+
 
 # Create a virtual environment
 RUN python3 -m venv /app/venv
