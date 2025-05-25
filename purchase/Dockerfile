@@ -21,6 +21,6 @@ RUN pip install --upgrade pip
 RUN pip install flask requests
 
 
-
+ EXPOSE 5000
 
 CMD ["python3", "purchase.py"]
