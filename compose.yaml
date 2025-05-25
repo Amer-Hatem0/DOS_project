@@ -1,7 +1,9 @@
 version: '3'
 
 services:
-  catalogservice_api:
+  #   catalogservice
+  catalog1:
+    container_name: catalog1
     build:
       context: ./catalogservice
     ports:
@@ -11,7 +13,21 @@ services:
     networks:
       - backend
 
-  purchase_api:
+  #   catalogservice
+  catalog2:
+    container_name: catalog2
+    build:
+      context: ./catalogservice2
+    ports:
+      - "5051:5000"
+    volumes:
+      - ./data:/data
+    networks:
+      - backend
+
+  #   purchase
+  purchase1:
+    container_name: purchase1
     build:
       context: ./purchase
     ports:
@@ -19,17 +35,34 @@ services:
     volumes:
       - ./data:/data
     depends_on:
-      - catalogservice_api
+      - catalog1
     networks:
       - backend
 
+  #   purchase
+  purchase2:
+    container_name: purchase2
+    build:
+      context: ./purchase2
+    ports:
+      - "5061:5000"
+    volumes:
+      - ./data:/data
+    depends_on:
+      - catalog2
+    networks:
+      - backend
+
+  #  Gateway
   front_api:
+    container_name: front_api
     build:
       context: ./front
     ports:
       - "8080:5000"
     depends_on:
-      - purchase_api
+      - purchase1
+      - purchase2
     networks:
       - backend
 
